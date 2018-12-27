@@ -20,7 +20,13 @@ import shutil
 import argparse
 import tempfile
 import urllib
+if sys.version_info >= (3, 0):
+    import urllib.request
 import zipfile
+
+URLLIB=urllib
+if sys.version_info >= (3, 0):
+    URLLIB=urllib.request
 
 TASKS = ["CoLA", "SST", "MRPC", "QQP", "STS", "MNLI", "SNLI", "QNLI", "RTE", "WNLI", "diagnostic"]
 TASK2PATH = {"CoLA":'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FCoLA.zip?alt=media&token=46d5e637-3411-4188-bc44-5809b5bfb5f4',
@@ -41,7 +47,7 @@ MRPC_TEST = 'https://s3.amazonaws.com/senteval/senteval_data/msr_paraphrase_test
 def download_and_extract(task, data_dir):
     print("Downloading and extracting %s..." % task)
     data_file = "%s.zip" % task
-    urllib.urlretrieve(TASK2PATH[task], data_file)
+    URLLIB.urlretrieve(TASK2PATH[task], data_file)
     with zipfile.ZipFile(data_file) as zip_ref:
         zip_ref.extractall(data_dir)
     os.remove(data_file)
@@ -58,20 +64,20 @@ def format_mrpc(data_dir, path_to_data):
     else:
         mrpc_train_file = os.path.join(mrpc_dir, "msr_paraphrase_train.txt")
         mrpc_test_file = os.path.join(mrpc_dir, "msr_paraphrase_test.txt")
-        urllib.urlretrieve(MRPC_TRAIN, mrpc_train_file)
-        urllib.urlretrieve(MRPC_TEST, mrpc_test_file)
+        URLLIB.urlretrieve(MRPC_TRAIN, mrpc_train_file)
+        URLLIB.urlretrieve(MRPC_TEST, mrpc_test_file)
     assert os.path.isfile(mrpc_train_file), "Train data not found at %s" % mrpc_train_file
     assert os.path.isfile(mrpc_test_file), "Test data not found at %s" % mrpc_test_file
-    urllib.urlretrieve(TASK2PATH["MRPC"], os.path.join(mrpc_dir, "dev_ids.tsv"))
+    URLLIB.urlretrieve(TASK2PATH["MRPC"], os.path.join(mrpc_dir, "dev_ids.tsv"))
 
     dev_ids = []
-    with open(os.path.join(mrpc_dir, "dev_ids.tsv")) as ids_fh:
+    with open(os.path.join(mrpc_dir, "dev_ids.tsv"), encoding='utf-8') as ids_fh:
         for row in ids_fh:
             dev_ids.append(row.strip().split('\t'))
 
-    with open(mrpc_train_file) as data_fh, \
-         open(os.path.join(mrpc_dir, "train.tsv"), 'w') as train_fh, \
-         open(os.path.join(mrpc_dir, "dev.tsv"), 'w') as dev_fh:
+    with open(mrpc_train_file, encoding='utf-8') as data_fh, \
+         open(os.path.join(mrpc_dir, "train.tsv"), 'w', encoding='utf-8') as train_fh, \
+         open(os.path.join(mrpc_dir, "dev.tsv"), 'w', encoding='utf-8') as dev_fh:
         header = data_fh.readline()
         train_fh.write(header)
         dev_fh.write(header)
@@ -82,8 +88,8 @@ def format_mrpc(data_dir, path_to_data):
             else:
                 train_fh.write("%s\t%s\t%s\t%s\t%s\n" % (label, id1, id2, s1, s2))
 
-    with open(mrpc_test_file) as data_fh, \
-            open(os.path.join(mrpc_dir, "test.tsv"), 'w') as test_fh:
+    with open(mrpc_test_file, encoding='utf-8') as data_fh, \
+            open(os.path.join(mrpc_dir, "test.tsv"), 'w', encoding='utf-8') as test_fh:
         header = data_fh.readline()
         test_fh.write("index\t#1 ID\t#2 ID\t#1 String\t#2 String\n")
         for idx, row in enumerate(data_fh):
@@ -96,7 +102,7 @@ def download_diagnostic(data_dir):
     if not os.path.isdir(os.path.join(data_dir, "diagnostic")):
         os.mkdir(os.path.join(data_dir, "diagnostic"))
     data_file = os.path.join(data_dir, "diagnostic", "diagnostic.tsv")
-    urllib.urlretrieve(TASK2PATH["diagnostic"], data_file)
+    URLLIB.urlretrieve(TASK2PATH["diagnostic"], data_file)
     print("\tCompleted!")
     return
 
