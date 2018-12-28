@@ -31,7 +31,8 @@ After downloading GLUE, point ``PATH_PREFIX`` in  ``src/preprocess.py`` to the d
 If you are blocked from s3.amazonaws.com, the MRPC downloading will fail, insteadly you can run the command below:
 
 ```
-python download_glue_data.py --data_dir glue_data --tasks all --path_to_mrpc=dataset/msr-paraphrase-corpus
+git clone https://github.com/wasiahmad/paraphrase_identification.git
+python download_glue_data.py --data_dir glue_data --tasks all --path_to_mrpc=paraphrase_identification/dataset/msr-paraphrase-corpus
 ```
 
 ## Running
