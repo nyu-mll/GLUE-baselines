@@ -28,6 +28,13 @@ python download_glue_data.py --data_dir glue_data --tasks all
 
 After downloading GLUE, point ``PATH_PREFIX`` in  ``src/preprocess.py`` to the directory containing the data.
 
+If you are blocked from s3.amazonaws.com (as may be the case in China), downloading MRPC will fail, instead you can run the command below:
+
+```
+git clone https://github.com/wasiahmad/paraphrase_identification.git
+python download_glue_data.py --data_dir glue_data --tasks all --path_to_mrpc=paraphrase_identification/dataset/msr-paraphrase-corpus
+```
+
 ## Running
 
 To run our baselines, use ``src/main.py``.
