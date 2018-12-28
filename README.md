@@ -28,7 +28,7 @@ python download_glue_data.py --data_dir glue_data --tasks all
 
 After downloading GLUE, point ``PATH_PREFIX`` in  ``src/preprocess.py`` to the directory containing the data.
 
-If you are blocked from s3.amazonaws.com, the MRPC downloading will fail, insteadly you can run the command below:
+If you are blocked from s3.amazonaws.com (as may be the case in China), the MRPC downloading will fail, insteadly you can run the command below:
 
 ```
 git clone https://github.com/wasiahmad/paraphrase_identification.git
