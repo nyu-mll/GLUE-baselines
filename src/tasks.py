@@ -189,9 +189,9 @@ class MultiNLITask(Task):
         tr_data = load_tsv(os.path.join(path, 'train.tsv'), max_seq_len,
                            s1_idx=8, s2_idx=9, targ_idx=11, targ_map=targ_map, skip_rows=1)
         val_matched_data = load_tsv(os.path.join(path, 'dev_matched.tsv'), max_seq_len,
-                                    s1_idx=8, s2_idx=9, targ_idx=11, targ_map=targ_map, skip_rows=1)
+                                    s1_idx=8, s2_idx=9, targ_idx=15, targ_map=targ_map, skip_rows=1)
         val_mismatched_data = load_tsv(os.path.join(path, 'dev_mismatched.tsv'), max_seq_len,
-                                       s1_idx=8, s2_idx=9, targ_idx=11, targ_map=targ_map,
+                                       s1_idx=8, s2_idx=9, targ_idx=15, targ_map=targ_map,
                                        skip_rows=1)
         val_data = [m + mm for m, mm in zip(val_matched_data, val_mismatched_data)]
         val_data = tuple(val_data)
@@ -337,6 +337,26 @@ class QNLITask(Task):
         self.val_data_text = val_data
         self.test_data_text = te_data
         log.info("\tFinished loading QNLI.")
+
+class QNLIv2Task(Task):
+    '''Task class for SQuAD NLI'''
+    def __init__(self, path, max_seq_len, name="qnliv2"):
+        super(QNLIv2Task, self).__init__(name, 2)
+        self.load_data(path, max_seq_len)
+
+    def load_data(self, path, max_seq_len):
+        '''Load the data'''
+        targ_map = {'not_entailment': 0, 'entailment': 1}
+        tr_data = load_tsv(os.path.join(path, "train.tsv"), max_seq_len, targ_map=targ_map,
+                           s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
+        val_data = load_tsv(os.path.join(path, "dev.tsv"), max_seq_len, targ_map=targ_map,
+                            s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
+        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
+                           s1_idx=1, s2_idx=2, targ_idx=None, idx_idx=0, skip_rows=1)
+        self.train_data_text = tr_data
+        self.val_data_text = val_data
+        self.test_data_text = te_data
+        log.info("\tFinished loading QNLIv2.")
 
 class CoLATask(Task):
     '''Class for Warstdadt acceptability task'''

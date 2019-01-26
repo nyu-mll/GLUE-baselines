@@ -15,7 +15,7 @@ from util import device_mapping
 
 from preprocess import build_tasks
 from models import build_model
-from trainer import MultiTaskTrainer, build_trainer
+from trainer import SamplingMultiTaskTrainer, build_trainer
 from evaluate import evaluate
 
 def main(arguments):

@@ -10,7 +10,7 @@
 
 SCRATCH_PREFIX='/misc/vlgscratch4/BowmanGroup/awang/'
 #SCRATCH_PREFIX='/beegfs/aw3272/'
-PROJECT_NAME='mtl-sent-rep'
+PROJECT_NAME='glue-baselines'
 EXP_NAME="debug"
 RUN_NAME="debug"
 GPUID=0

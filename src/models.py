@@ -13,7 +13,8 @@ from allennlp.common import Params
 from allennlp.common.checks import ConfigurationError
 from allennlp.data import Vocabulary
 from allennlp.models.model import Model
-from allennlp.modules import Highway, MatrixAttention
+from allennlp.modules import Highway#, MatrixAttention
+from allennlp.modules.matrix_attention import DotProductMatrixAttention
 from allennlp.modules import Seq2SeqEncoder, SimilarityFunction, TimeDistributed, TextFieldEmbedder
 from allennlp.nn import util, InitializerApplicator, RegularizerApplicator
 from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
@@ -493,7 +494,7 @@ class HeadlessPairAttnEncoder(Model):
             self._highway_layer = TimeDistributed(Highway(d_emb, num_highway_layers))
 
         self._phrase_layer = phrase_layer
-        self._matrix_attention = MatrixAttention(attention_similarity_function)
+        self._matrix_attention = DotProductMatrixAttention()
         self._modeling_layer = modeling_layer
         self._cove = cove_layer
         self._elmo = elmo_layer

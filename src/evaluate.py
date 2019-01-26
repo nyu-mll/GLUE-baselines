@@ -54,7 +54,10 @@ def evaluate(model, tasks, iterator, cuda_device, split="val"):
             #tensor_batch = arrays_to_variables(batch, cuda_device, for_training=False)
             tensor_batch = batch
             if 'idx' in tensor_batch:
-                task_idxs += tensor_batch['idx'].squeeze(dim=1).data.tolist()
+                try:
+                    task_idxs += tensor_batch['idx'].squeeze(dim=1).data.tolist()
+                except Exception as e:
+                    task_idxs += tensor_batch['idx'].data.tolist()
                 tensor_batch.pop('idx', None)
             out = model.forward(task, **tensor_batch)
             task_metrics = task.get_metrics()

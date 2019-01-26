@@ -14,19 +14,19 @@ else:
     gpu_type = 'p40' # should be p100 or p40
 
 # MAKE SURE TO CHANGE ME #
-proj_name = 'mtl-sent-rep'
+proj_name = 'glue-baselines'
 rand_search = 0
-n_runs = 9
+n_runs = 1
 
 # embedding stuff
-elmo = 0
+elmo = 1
 deep_elmo = 0
 if elmo:
-    exp_name = 'elmo_no_glove_v3'
+    exp_name = 'multitask-elmo'
 else:
-    exp_name = 'glove_v3'
-cove = 1
-glove = 1
+    exp_name = 'multitask'
+cove = 0
+glove = 0
 
 # model parameters
 d_hids = ['500', '1000', '1500', '2000']
@@ -34,7 +34,7 @@ n_enc_layers = ['1', '2', '3']
 n_hwy_layers = ['0', '1', '2']
 drops = ['0.0', '0.1', '0.2', '0.3']
 classifiers = ['log_reg', 'mlp']
-attn = 0
+attn = 1
 
 # optimization settings
 optimizers = ['sgd', 'adam']
@@ -70,7 +70,7 @@ best_val_interval = 10000
 best_scale = 'max'
 best_weighting_method = 'proportional'
 
-for run_n in range(6, n_runs):
+for run_n in range(n_runs):
     if rand_search:
         d_hid = random.choice(d_hids)
         n_enc_layer = random.choice(n_enc_layers)
@@ -124,7 +124,7 @@ for run_n in range(6, n_runs):
     out_file = exp_dir + '/sbatch.out'
     err_file = exp_dir + '/sbatch.err'
 
-    seed = str(random.randint(1, 10000))
+    seed = str(111 * run_n)
 
     slurm_args = ['sbatch', '-J', job_name, '-e', err_file, '-o', out_file,
                   '-t', '2-00:00', '--gres=gpu:%s:1' % gpu_type,
@@ -160,5 +160,5 @@ for run_n in range(6, n_runs):
 
     cmd = slurm_args + exp_args
     print(' '.join(cmd))
-    subprocess.call(cmd)
-    time.sleep(10)
+    #subprocess.call(cmd)
+    #time.sleep(10)

@@ -17,15 +17,15 @@ small_tasks = [('squad', 723), ('wnli', 5), ('msrp', 25), ('rte', 18), ('sts-b',
 big_tasks = [('mnli', 2612), ('quora', 2421)]
 pair_tasks = small_tasks + big_tasks
 single_tasks = [('sst', 1053), ('acceptability', 134)]
-tasks = single_tasks
+tasks = [('qnliv2', 723)] #single_tasks
 
 # MAKE SURE TO CHANGE ME #
-proj_name = 'mtl-sent-rep'
+proj_name = 'glue-baselines'
 rand_search = 0
 n_runs = 1
 
 # embedding stuff
-elmo = 1
+elmo = 0
 deep_elmo = 0
 cove = 0
 glove = 1
@@ -36,7 +36,7 @@ n_enc_layers = ['1', '2', '3']
 n_hwy_layers = ['0', '1', '2']
 drops = ['0.0', '0.1', '0.2', '0.3']
 classifiers = ['log_reg', 'mlp']
-attn = 0
+attn = 1
 
 # optimization settings
 optimizers = ['sgd', 'adam']
@@ -168,5 +168,5 @@ for run_n in range(n_runs):
 
         cmd = slurm_args + exp_args
         print(' '.join(cmd))
-        subprocess.call(cmd)
-        time.sleep(10)
+        #subprocess.call(cmd)
+        #time.sleep(10)

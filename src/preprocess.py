@@ -13,7 +13,7 @@ from allennlp.data.token_indexers import SingleIdTokenIndexer, ELMoTokenCharacte
 from allennlp_mods.numeric_field import NumericField
 
 from tasks import CoLATask, MRPCTask, MultiNLITask, QQPTask, RTETask, \
-                  QNLITask, SNLITask, SSTTask, STSBTask, WNLITask
+                  QNLITask, QNLIv2Task, SNLITask, SSTTask, STSBTask, WNLITask
 
 if "cs.nyu.edu" in os.uname()[1] or "dgx" in os.uname()[1]:
     PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'
@@ -21,7 +21,8 @@ else:
     PATH_PREFIX = '/beegfs/aw3272/'
 PATH_PREFIX = PATH_PREFIX + 'processed_data/mtl-sentence-representations/'
 
-ALL_TASKS = ['mnli', 'mrpc', 'qqp', 'rte', 'qnli', 'snli', 'sst', 'sts-b', 'wnli', 'cola']
+#ALL_TASKS = ['mnli', 'mrpc', 'qqp', 'rte', 'qnli', 'snli', 'sst', 'sts-b', 'wnli', 'cola']
+ALL_TASKS = ['mnli', 'mrpc', 'qqp', 'rte', 'qnliv2', 'snli', 'sst', 'sts-b', 'wnli', 'cola']
 NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'cola': (CoLATask, 'CoLA/'),
              'mrpc': (MRPCTask, 'MRPC/'),
@@ -29,6 +30,7 @@ NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'sts-b': (STSBTask, 'STS-B/'),
              'mnli': (MultiNLITask, 'MNLI/'),
              'qnli': (QNLITask, 'QNLI/'),
+             'qnliv2': (QNLIv2Task, 'QNLIv2/'),
              'rte': (RTETask, 'RTE/'),
              'snli': (SNLITask, 'SNLI/'),
              'wnli': (WNLITask, 'WNLI/')
