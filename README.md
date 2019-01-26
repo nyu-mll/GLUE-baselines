@@ -2,6 +2,10 @@
 This repo contains the code for baselines for the [Generalized Language Understanding Evaluation](https://gluebenchmark.com/) (GLUE) benchmark.
 See [our paper](https://www.nyu.edu/projects/bowman/glue.pdf) for more details about GLUE or the baselines.
 
+# Alert!
+
+Use this code to reproduce our baselines. If you want code to use as a starting point for new development, though, we strongly recommend using [jiant](https://github.com/jsalt18-sentence-repl/jiant) instead—it's a much more extensive and much better-documented toolkit built around the same goals.
+
 ## Dependencies
 
 Make sure you have installed the packages listed in environment.yml.
@@ -23,6 +27,13 @@ python download_glue_data.py --data_dir glue_data --tasks all
 ```
 
 After downloading GLUE, point ``PATH_PREFIX`` in  ``src/preprocess.py`` to the directory containing the data.
+
+If you are blocked from s3.amazonaws.com (as may be the case in China), downloading MRPC will fail, instead you can run the command below:
+
+```
+git clone https://github.com/wasiahmad/paraphrase_identification.git
+python download_glue_data.py --data_dir glue_data --tasks all --path_to_mrpc=paraphrase_identification/dataset/msr-paraphrase-corpus
+```
 
 ## Running
 
