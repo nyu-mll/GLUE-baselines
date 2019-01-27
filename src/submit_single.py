@@ -27,8 +27,9 @@ n_runs = 1
 # embedding stuff
 elmo = 0
 deep_elmo = 0
-cove = 0
+cove = 1
 glove = 1
+attn = 1
 
 # model parameters
 d_hids = ['500', '1000', '1500', '2000']
@@ -36,7 +37,6 @@ n_enc_layers = ['1', '2', '3']
 n_hwy_layers = ['0', '1', '2']
 drops = ['0.0', '0.1', '0.2', '0.3']
 classifiers = ['log_reg', 'mlp']
-attn = 1
 
 # optimization settings
 optimizers = ['sgd', 'adam']
@@ -72,12 +72,13 @@ best_val_interval = 10000
 best_scale = 'max'
 best_weighting_method = 'proportional'
 
-for run_n in range(n_runs):
+#for run_n in range(n_runs):
+for seed in [str(s) for s in [111, 222, 333]]:
     for task, val_interval in tasks:
         exp_name = 'baseline'
         if elmo:
-            exp_name = 'elmo_' + exp_name
-        exp_name = "%s_%s" % (task, exp_name)
+            exp_name = exp_name + '-elmo'
+        exp_name = "%s-%s" % (task, exp_name)
 
         if rand_search:
             d_hid = random.choice(d_hids)
@@ -109,20 +110,19 @@ for run_n in range(n_runs):
         else:
             mem_req = 16
 
-        run_name = 'bpp%d_vi%d_d%s_lenc%s_nhwy%s_%s_lr%s_decay%s_p%s_tp%s_%sscale_do%s_c%s' % \
-                    (bpp, val_interval, d_hid, n_enc_layer, n_hwy_layer, optimizer,
-                     lr, lr_decay, patience, str(task_patience + 1), scale, drop, classifier)
+        run_name = str(seed)
         if attn:
-            run_name = 'attn_' + run_name
+            run_name = 'attn-' + run_name
+        else:
+            run_name = 'noattn-' + run_name
+
         if cove:
-            run_name = 'cove_' + run_name
+            run_name = 'cove-' + run_name
         if elmo:
-            run_name = 'elmo_' + run_name
-        if not glove:
-            run_name = 'learned_' + run_name
-        if not attn and not cove and not elmo and not rand_search and glove:
-            run_name = 'base_' + run_name
-        run_name = ("r%d_" % run_n) + run_name
+            run_name = 'elmo-' + run_name
+        if not cove and not elmo:
+            run_name = 'glove-' + run_name
+        run_name = 'singletask-' + run_name
         job_name = '%s_%s' % (run_name, exp_name)
 
         # logging
@@ -132,7 +132,6 @@ for run_n in range(n_runs):
         out_file = exp_dir + '/sbatch.out'
         err_file = exp_dir + '/sbatch.err'
 
-        seed = str(random.randint(1, 10000))
 
         slurm_args = ['sbatch', '-J', job_name, '-e', err_file, '-o', out_file,
                       '-t', '2-00:00', '--gres=gpu:%s:1' % gpu_type,
@@ -168,5 +167,5 @@ for run_n in range(n_runs):
 
         cmd = slurm_args + exp_args
         print(' '.join(cmd))
-        #subprocess.call(cmd)
-        #time.sleep(10)
+        subprocess.call(cmd)
+        time.sleep(5)
