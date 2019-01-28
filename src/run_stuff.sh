@@ -45,7 +45,7 @@ n_layers_highway=0
 
 OPTIMIZER="sgd"
 LR=.1
-min_lr=1e-5
+min_lr=.000001 #1e-5
 dropout=.2
 LR_DECAY=.5
 patience=5

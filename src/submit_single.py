@@ -25,10 +25,10 @@ rand_search = 0
 n_runs = 1
 
 # embedding stuff
-elmo = 0
+elmo = 1
 deep_elmo = 0
-cove = 1
-glove = 1
+cove = 0
+glove = 0
 attn = 1
 
 # model parameters
@@ -61,7 +61,7 @@ best_classifier = 'mlp'
 
 # best optimizer settings
 best_optimizer = 'adam'
-best_lr = '1e-3'
+best_lr = .0001 # '1e-3'
 best_lr_decay = '.2'
 best_task_patience = 0
 best_patience = '5'
@@ -73,7 +73,7 @@ best_scale = 'max'
 best_weighting_method = 'proportional'
 
 #for run_n in range(n_runs):
-for seed in [str(s) for s in [111, 222, 333]]:
+for seed in [str(s) for s in [111]]:
     for task, val_interval in tasks:
         exp_name = 'baseline'
         if elmo:
@@ -95,7 +95,7 @@ for seed in [str(s) for s in [111, 222, 333]]:
             classifier = best_classifier
 
             optimizer = best_optimizer
-            lr = best_lr
+            lr = str(best_lr)
             lr_decay = best_lr_decay
             task_patience = best_task_patience
             patience = best_patience
@@ -110,7 +110,7 @@ for seed in [str(s) for s in [111, 222, 333]]:
         else:
             mem_req = 16
 
-        run_name = str(seed)
+        run_name = 'lr%s-s%s' % (lr, str(seed))
         if attn:
             run_name = 'attn-' + run_name
         else:

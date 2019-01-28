@@ -19,14 +19,14 @@ rand_search = 0
 n_runs = 1
 
 # embedding stuff
-elmo = 0
+elmo = 1
 deep_elmo = 0
 if elmo:
     exp_name = 'multitask-baseline-elmo'
 else:
     exp_name = 'multitask-baseline'
-cove = 1
-glove = 1
+cove = 0
+glove = 0
 attn = 0
 
 # model parameters
@@ -59,7 +59,7 @@ best_classifier = 'mlp'
 
 # best optimizer settings
 best_optimizer = 'adam'
-best_lr = '1e-3'
+best_lr = '1e-4' # '1e-3'
 best_lr_decay = '.2'
 best_task_patience = 0
 best_patience = '5'
@@ -71,7 +71,7 @@ best_scale = 'max'
 best_weighting_method = 'proportional'
 
 #for run_n in range(n_runs):
-for seed in [str(s) for s in [222, 333]]:
+for seed in [str(s) for s in [111]]:
     if rand_search:
         d_hid = random.choice(d_hids)
         n_enc_layer = random.choice(n_enc_layers)
@@ -101,7 +101,7 @@ for seed in [str(s) for s in [222, 333]]:
         mem_req = 64
     else:
         mem_req = 16
-    run_name = str(seed)
+    run_name = 'lr%.5f-s%d' % (lr, str(seed))
     if attn:
         run_name = 'attn-' + run_name
     else:
