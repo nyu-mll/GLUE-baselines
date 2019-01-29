@@ -159,6 +159,8 @@ class QQPTask(Task):
         '''Process the dataset located at data_file.'''
         targ_idx = None if "test" in path else 5
         idx_idx = 0 if "test" in path else None
+        s1_idx = 1 if "test" in path else 3
+        s2_idx = 2 if "test" in path else 4
         return load_tsv(path, self.max_seq_len,
                         s1_idx=3, s2_idx=4, targ_idx=targ_idx, idx_idx=idx_idx,
                         skip_rows=1)
