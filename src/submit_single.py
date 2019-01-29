@@ -25,11 +25,11 @@ rand_search = 0
 n_runs = 1
 
 # embedding stuff
-elmo = 1
+elmo = 0
 deep_elmo = 0
-cove = 0
-glove = 0
-attn = 1
+cove = 1
+glove = 1
+attn = 0
 
 # model parameters
 d_hids = ['500', '1000', '1500', '2000']
@@ -73,7 +73,7 @@ best_scale = 'max'
 best_weighting_method = 'proportional'
 
 #for run_n in range(n_runs):
-for seed in [str(s) for s in [111]]:
+for seed in [str(s) for s in [111, 222, 333]]:
     for task, val_interval in tasks:
         exp_name = 'baseline'
         if elmo:
