@@ -8,14 +8,13 @@ rather than instantiating a ``MultiTaskTrainer`` yourself.
 """
 
 import os
-import ipdb as pdb # pylint: disable=unused-import
 import math
 import time
 import copy
 import random
 import logging
 import itertools
-
+import ipdb as pdb
 import torch
 import torch.optim.lr_scheduler
 from torch.nn.utils.clip_grad import clip_grad_norm
@@ -25,7 +24,7 @@ from allennlp.common import Params
 from allennlp.common.checks import ConfigurationError
 from allennlp.training.learning_rate_schedulers import LearningRateScheduler
 from allennlp.training.optimizers import Optimizer
-from util import arrays_to_variables, device_mapping
+from utils import arrays_to_variables, device_mapping
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 from tasks import STS14Task, STSBTask
@@ -348,7 +347,7 @@ class SamplingMultiTaskTrainer():
             n_examples = 0.0
             task_info = task_infos[task.name]
             val_generator = iterator(task.val_data, num_epochs=1, cuda_device=self._cuda_device)
-            n_val_batches = iterator.get_num_batches(task.val_data)
+            n_val_batches = math.ceil(task.n_val_examples / iterator._batch_size)
             all_val_metrics["%s_loss" % task.name] = 0.0
             batch_num = 0
             for batch in val_generator:

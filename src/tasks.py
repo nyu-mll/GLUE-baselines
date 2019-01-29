@@ -4,12 +4,14 @@ import xml.etree.ElementTree
 import glob
 import codecs
 import random
+import itertools
 import logging as log
 from abc import ABCMeta, abstractmethod
-import ipdb as pdb
 import nltk
 
 from allennlp.training.metrics import CategoricalAccuracy, F1Measure, Average
+
+ALL_SPLITS = ["train", "dev", "test"]
 
 def process_sentence(sent, max_seq_len):
     '''process a sentence using NLTK toolkit and adding SOS+EOS tokens'''
@@ -17,9 +19,8 @@ def process_sentence(sent, max_seq_len):
     return nltk.word_tokenize(sent)[:max_seq_len]
 
 def load_tsv(data_file, max_seq_len, s1_idx=0, s2_idx=1, targ_idx=2, idx_idx=None,
-             targ_map=None, targ_fn=None, skip_rows=0, delimiter='\t'):
+             targ_map=None, targ_fn=None, skip_rows=0, delimiter='\t', idx_offset=0):
     '''Load a tsv '''
-    sent1s, sent2s, targs, idxs = [], [], [], []
     with codecs.open(data_file, 'r', 'utf-8') as data_fh:
         for _ in range(skip_rows):
             data_fh.readline()
@@ -45,23 +46,19 @@ def load_tsv(data_file, max_seq_len, s1_idx=0, s2_idx=1, targ_idx=2, idx_idx=Non
                     sent2 = process_sentence(row[s2_idx], max_seq_len)
                     if not len(sent2):
                         continue
-                    sent2s.append(sent2)
+                else:
+                    sent2 = []
 
                 if idx_idx is not None:
-                    idx = int(row[idx_idx])
-                    idxs.append(idx)
+                    idx = int(row[idx_idx]) + idx_offset
+                else:
+                    idx = None
 
-                sent1s.append(sent1)
-                targs.append(targ)
+                yield sent1, sent2, targ, idx
 
             except Exception as e:
                 print(e, " file: %s, row: %d" % (data_file, row_idx))
                 continue
-
-    if idx_idx is not None:
-        return sent1s, sent2s, targs, idxs
-    else:
-        return sent1s, sent2s, targs
 
 def split_data(data, ratio, shuffle=1):
     '''Split dataset according to ratio, larger split is first return'''
@@ -91,6 +88,7 @@ class Task():
     def __init__(self, name, n_classes):
         self.name = name
         self.n_classes = n_classes
+        self.files_by_split = {}
         self.train_data_text, self.val_data_text, self.test_data_text = \
             None, None, None
         self.train_data = None
@@ -104,8 +102,37 @@ class Task():
         self.scorer1 = CategoricalAccuracy()
         self.scorer2 = None
 
+    def get_sentences(self):
+        for split in self.files_by_split:
+            if split.startswith("test"):
+                continue
+            for instance in self.load_data(self.files_by_split[split]):
+                yield instance[0]
+                yield instance[1]
+
+    def get_split_text(self, split):
+        return self.load_data(self.files_by_split[split])
+
+    def count_examples(self):
+        example_counts = {}
+        for split, split_path in self.files_by_split.items():
+            example_counts[split] = sum(1 for line in open(split_path)) - 1
+        self.example_counts = example_counts
+
+    @property
+    def n_val_examples(self):
+        return self.example_counts['dev']
+
+    @property
+    def n_train_examples(self):
+        return self.example_counts['train']
+
+    @property
+    def n_test_examples(self):
+        return self.example_counts['test']
+
     @abstractmethod
-    def load_data(self, path, max_seq_len):
+    def load_data(self, path):
         '''
         Load data from path and create splits.
         '''
@@ -124,21 +151,17 @@ class QQPTask(Task):
     def __init__(self, path, max_seq_len, name="quora"):
         ''' '''
         super(QQPTask, self).__init__(name, 2)
-        self.load_data(path, max_seq_len)
+        self.files_by_split = {split: os.path.join(path, "%s.tsv" % split) for split in ALL_SPLITS}
+        self.max_seq_len = max_seq_len
         self.scorer2 = F1Measure(1)
 
-    def load_data(self, path, max_seq_len):
+    def load_data(self, path):
         '''Process the dataset located at data_file.'''
-        tr_data = load_tsv(os.path.join(path, "train.tsv"), max_seq_len,
-                           s1_idx=3, s2_idx=4, targ_idx=5, skip_rows=1)
-        val_data = load_tsv(os.path.join(path, "dev.tsv"), max_seq_len,
-                            s1_idx=3, s2_idx=4, targ_idx=5, skip_rows=1)
-        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
-                           s1_idx=1, s2_idx=2, targ_idx=None, idx_idx=0, skip_rows=1)
-        self.train_data_text = tr_data
-        self.val_data_text = val_data
-        self.test_data_text = te_data
-        log.info("\tFinished loading QQP data.")
+        targ_idx = None if "test" in path else 5
+        idx_idx = 0 if "test" in path else None
+        return load_tsv(path, self.max_seq_len,
+                        s1_idx=3, s2_idx=4, targ_idx=targ_idx, idx_idx=idx_idx,
+                        skip_rows=1)
 
     def get_metrics(self, reset=False):
         '''Get metrics specific to the task'''
@@ -153,22 +176,16 @@ class SNLITask(Task):
     def __init__(self, path, max_seq_len, name="snli"):
         ''' Args: '''
         super(SNLITask, self).__init__(name, 3)
-        self.load_data(path, max_seq_len)
+        self.files_by_split = {split: os.path.join(path, "%s.tsv" % split) for split in ALL_SPLITS}
+        self.max_seq_len = max_seq_len
         self.scorer2 = None
 
-    def load_data(self, path, max_seq_len):
-        ''' Process the dataset located at path.  '''
+    def load_data(self, path):
+        '''Load the data'''
         targ_map = {'neutral': 0, 'entailment': 1, 'contradiction': 2}
-        tr_data = load_tsv(os.path.join(path, "train.tsv"), max_seq_len, targ_map=targ_map,
-                           s1_idx=7, s2_idx=8, targ_idx=-1, skip_rows=1)
-        val_data = load_tsv(os.path.join(path, "dev.tsv"), max_seq_len, targ_map=targ_map,
-                            s1_idx=7, s2_idx=8, targ_idx=-1, skip_rows=1)
-        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
-                           s1_idx=7, s2_idx=8, targ_idx=None, idx_idx=0, skip_rows=1)
-        self.train_data_text = tr_data
-        self.val_data_text = val_data
-        self.test_data_text = te_data
-        log.info("\tFinished loading SNLI data.")
+        targ_idx = None if "test" in path else -1
+        return load_tsv(path, self.max_seq_len, targ_map=targ_map,
+                        s1_idx=7, s2_idx=8, targ_idx=targ_idx, skip_rows=1)
 
     def get_metrics(self, reset=False):
         ''' No F1 '''
@@ -180,36 +197,56 @@ class MultiNLITask(Task):
     def __init__(self, path, max_seq_len, name="mnli"):
         '''MNLI'''
         super(MultiNLITask, self).__init__(name, 3)
-        self.load_data(path, max_seq_len)
+        self.files_by_split = {"train": [os.path.join(path, "train.tsv")],
+            "dev": [os.path.join(path, f) for f in ["dev_matched.tsv", "dev_mismatched.tsv"]],
+            "test": [os.path.join(path, f) for f in ["test_matched.tsv", "test_mismatched.tsv", "diagnostic.tsv"]]}
+        self._indices = {"train": {"s1": 8, "s2": 9, "targ": 11, "idx": None},
+                         "dev": {"s1": 8, "s2": 9, "targ": 15, "idx": None},
+                         "test": {"s1": 8, "s2": 9, "targ": None, "idx": 0},
+                         "diagnostic": {"s1": 1, "s2": 2, "targ": None, "idx": 0}}
+        self.max_seq_len = max_seq_len
         self.scorer2 = None
 
-    def load_data(self, path, max_seq_len):
-        '''Process the dataset located at path.'''
+    def get_sentences(self):
+        for split in self.files_by_split:
+            if split.startswith("test"):
+                continue
+            for instance in self.load_data(self.files_by_split[split], split):
+                yield instance[0]
+                yield instance[1]
+
+    def get_split_text(self, split):
+        return self.load_data(self.files_by_split[split], split)
+
+    def count_examples(self):
+        example_counts = {}
+        for split, split_paths in self.files_by_split.items():
+            example_counts[split] = sum([sum([1 for line in open(p)]) for p in split_paths]) - len(split_paths)
+        self.example_counts = example_counts
+
+    def load_data(self, paths, split):
+        '''Load the data'''
         targ_map = {'neutral': 0, 'entailment': 1, 'contradiction': 2}
-        tr_data = load_tsv(os.path.join(path, 'train.tsv'), max_seq_len,
-                           s1_idx=8, s2_idx=9, targ_idx=11, targ_map=targ_map, skip_rows=1)
-        val_matched_data = load_tsv(os.path.join(path, 'dev_matched.tsv'), max_seq_len,
-                                    s1_idx=8, s2_idx=9, targ_idx=15, targ_map=targ_map, skip_rows=1)
-        val_mismatched_data = load_tsv(os.path.join(path, 'dev_mismatched.tsv'), max_seq_len,
-                                       s1_idx=8, s2_idx=9, targ_idx=15, targ_map=targ_map,
-                                       skip_rows=1)
-        val_data = [m + mm for m, mm in zip(val_matched_data, val_mismatched_data)]
-        val_data = tuple(val_data)
-
-        te_matched_data = load_tsv(os.path.join(path, 'test_matched.tsv'), max_seq_len,
-                                   s1_idx=8, s2_idx=9, targ_idx=None, idx_idx=0, skip_rows=1)
-        te_mismatched_data = load_tsv(os.path.join(path, 'test_mismatched.tsv'), max_seq_len,
-                                      s1_idx=8, s2_idx=9, targ_idx=None, idx_idx=0, skip_rows=1)
-        te_diagnostic_data = load_tsv(os.path.join(path, 'diagnostic.tsv'), max_seq_len,
-                                      s1_idx=1, s2_idx=2, targ_idx=None, idx_idx=0, skip_rows=1)
-        te_data = [m + mm + d for m, mm, d in \
-                    zip(te_matched_data, te_mismatched_data, te_diagnostic_data)]
-        te_data[3] = list(range(len(te_data[3])))
-
-        self.train_data_text = tr_data
-        self.val_data_text = val_data
-        self.test_data_text = te_data
-        log.info("\tFinished loading MNLI data.")
+        s1_idx = self._indices[split]["s1"]
+        s2_idx = self._indices[split]["s2"]
+        targ_idx = self._indices[split]["targ"]
+        idx_idx = self._indices[split]["idx"]
+        iters = []
+        for path in paths:
+            if split == "test":
+                idx_offset = sum(1 for _ in iters[-1]) if len(iters) else 0
+                if "diagnostic" in path:
+                    s1_idx = self._indices["diagnostic"]["s1"]
+                    s2_idx = self._indices["diagnostic"]["s2"]
+                    targ_idx = self._indices["diagnostic"]["targ"]
+                    idx_idx = self._indices["diagnostic"]["idx"]
+            else:
+                idx_offset = 0
+            i = load_tsv(path, self.max_seq_len, targ_map=targ_map,
+                         s1_idx=s1_idx, s2_idx=s2_idx, targ_idx=targ_idx, idx_idx=idx_idx,
+                         skip_rows=1, idx_offset=idx_offset)
+            iters.append(i)
+        return itertools.chain.from_iterable(iters)
 
     def get_metrics(self, reset=False):
         ''' No F1 '''
@@ -221,21 +258,17 @@ class MRPCTask(Task):
     def __init__(self, path, max_seq_len, name="mrpc"):
         ''' '''
         super(MRPCTask, self).__init__(name, 2)
-        self.load_data(path, max_seq_len)
+        self.files_by_split = {split: os.path.join(path, "%s.tsv" % split) for split in ALL_SPLITS}
+        self.max_seq_len = max_seq_len
         self.scorer2 = F1Measure(1)
 
-    def load_data(self, path, max_seq_len):
-        ''' Process the dataset located at path.  '''
-        tr_data = load_tsv(os.path.join(path, "train.tsv"), max_seq_len,
-                           s1_idx=3, s2_idx=4, targ_idx=0, skip_rows=1)
-        val_data = load_tsv(os.path.join(path, "dev.tsv"), max_seq_len,
-                            s1_idx=3, s2_idx=4, targ_idx=0, skip_rows=1)
-        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
-                           s1_idx=3, s2_idx=4, targ_idx=None, idx_idx=0, skip_rows=1)
-        self.train_data_text = tr_data
-        self.val_data_text = val_data
-        self.test_data_text = te_data
-        log.info("\tFinished loading MSRP data.")
+    def load_data(self, path):
+        '''Load the data'''
+        targ_idx = None if "test" in path else 0
+        idx_idx = 0 if "test" in path else None
+        return load_tsv(path, self.max_seq_len,
+                        s1_idx=3, s2_idx=4, targ_idx=targ_idx, idx_idx=idx_idx,
+                        skip_rows=1)
 
     def get_metrics(self, reset=False):
         '''Get metrics specific to the task'''
@@ -254,20 +287,17 @@ class STSBTask(Task):
         self.val_metric_decreases = False
         self.scorer1 = Average()
         self.scorer2 = Average()
-        self.load_data(path, max_seq_len)
+        self.files_by_split = {split: os.path.join(path, "%s.tsv" % split) for split in ALL_SPLITS}
+        self.max_seq_len = max_seq_len
 
-    def load_data(self, path, max_seq_len):
-        ''' '''
-        tr_data = load_tsv(os.path.join(path, 'train.tsv'), max_seq_len, skip_rows=1,
-                           s1_idx=7, s2_idx=8, targ_idx=9, targ_fn=lambda x: float(x) / 5)
-        val_data = load_tsv(os.path.join(path, 'dev.tsv'), max_seq_len, skip_rows=1,
-                            s1_idx=7, s2_idx=8, targ_idx=9, targ_fn=lambda x: float(x) / 5)
-        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
-                           s1_idx=7, s2_idx=8, targ_idx=None, idx_idx=0, skip_rows=1)
-        self.train_data_text = tr_data
-        self.val_data_text = val_data
-        self.test_data_text = te_data
-        log.info("\tFinished loading STS Benchmark data.")
+    def load_data(self, path):
+        '''Load the data'''
+        targ_fn = lambda x: float(x) / 5
+        targ_idx = None if "test" in path else 9
+        idx_idx = 0 if "test" in path else None
+        return load_tsv(path, self.max_seq_len, targ_fn=targ_fn,
+                        s1_idx=7, s2_idx=8, targ_idx=targ_idx, idx_idx=idx_idx,
+                        skip_rows=1)
 
     def get_metrics(self, reset=False):
         # NB: I think I call it accuracy b/c something weird in training
@@ -280,20 +310,23 @@ class SSTTask(Task):
         ''' '''
         super(SSTTask, self).__init__(name, 2)
         self.pair_input = 0
-        self.load_data(path, max_seq_len)
+        self.files_by_split = {split: os.path.join(path, "%s.tsv" % split) for split in ALL_SPLITS}
+        self.max_seq_len = max_seq_len
 
-    def load_data(self, path, max_seq_len):
-        ''' '''
-        tr_data = load_tsv(os.path.join(path, 'train.tsv'), max_seq_len,
-                           s1_idx=0, s2_idx=None, targ_idx=1, skip_rows=1)
-        val_data = load_tsv(os.path.join(path, 'dev.tsv'), max_seq_len,
-                            s1_idx=0, s2_idx=None, targ_idx=1, skip_rows=1)
-        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
-                           s1_idx=1, s2_idx=None, targ_idx=None, idx_idx=0, skip_rows=1)
-        self.train_data_text = tr_data
-        self.val_data_text = val_data
-        self.test_data_text = te_data
-        log.info("\tFinished loading SST data.")
+    def get_sentences(self):
+        for split in self.files_by_split:
+            if split.startswith("test"):
+                continue
+            for instance in self.load_data(self.files_by_split[split]):
+                yield instance[0]
+
+    def load_data(self, path):
+        '''Load the data'''
+        targ_idx = None if "test" in path else 1
+        idx_idx = 0 if "test" in path else None
+        return load_tsv(path, self.max_seq_len,
+                        s1_idx=0, s2_idx=None, targ_idx=targ_idx, idx_idx=idx_idx,
+                        skip_rows=1)
 
 class RTETask(Task):
     ''' Task class for Recognizing Textual Entailment 1, 2, 3, 5 '''
@@ -301,62 +334,49 @@ class RTETask(Task):
     def __init__(self, path, max_seq_len, name="rte"):
         ''' '''
         super(RTETask, self).__init__(name, 2)
-        self.load_data(path, max_seq_len)
+        self.files_by_split = {split: os.path.join(path, "%s.tsv" % split) for split in ALL_SPLITS}
+        self.max_seq_len = max_seq_len
 
-    def load_data(self, path, max_seq_len):
-        ''' Process the datasets located at path. '''
-        targ_map = {"not_entailment": 0, "entailment": 1}
-        tr_data = load_tsv(os.path.join(path, 'train.tsv'), max_seq_len, targ_map=targ_map,
-                           s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
-        val_data = load_tsv(os.path.join(path, 'dev.tsv'), max_seq_len, targ_map=targ_map,
-                            s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
-        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
-                           s1_idx=1, s2_idx=2, targ_idx=None, idx_idx=0, skip_rows=1)
-
-        self.train_data_text = tr_data
-        self.val_data_text = val_data
-        self.test_data_text = te_data
-        log.info("\tFinished loading RTE{1,2,3}.")
+    def load_data(self, path):
+        '''Load the data'''
+        targ_map = {'not_entailment': 0, 'entailment': 1}
+        targ_idx = None if "test" in path else 3
+        idx_idx = 0 if "test" in path else None
+        return load_tsv(path, self.max_seq_len, targ_map=targ_map,
+                       s1_idx=1, s2_idx=2, targ_idx=targ_idx, idx_idx=idx_idx,
+                       skip_rows=1)
 
 class QNLITask(Task):
     '''Task class for SQuAD NLI'''
     def __init__(self, path, max_seq_len, name="squad"):
         super(QNLITask, self).__init__(name, 2)
-        self.load_data(path, max_seq_len)
+        self.files_by_split = {split: os.path.join(path, "%s.tsv" % split) for split in ALL_SPLITS}
+        self.max_seq_len = max_seq_len
 
-    def load_data(self, path, max_seq_len):
+    def load_data(self, path):
         '''Load the data'''
         targ_map = {'not_entailment': 0, 'entailment': 1}
-        tr_data = load_tsv(os.path.join(path, "train.tsv"), max_seq_len, targ_map=targ_map,
-                           s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
-        val_data = load_tsv(os.path.join(path, "dev.tsv"), max_seq_len, targ_map=targ_map,
-                            s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
-        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
-                           s1_idx=1, s2_idx=2, targ_idx=None, idx_idx=0, skip_rows=1)
-        self.train_data_text = tr_data
-        self.val_data_text = val_data
-        self.test_data_text = te_data
-        log.info("\tFinished loading QNLI.")
+        targ_idx = None if "test" in path else 3
+        idx_idx = 0 if "test" in path else None
+        return load_tsv(path, self.max_seq_len, targ_map=targ_map,
+                       s1_idx=1, s2_idx=2, targ_idx=targ_idx, idx_idx=idx_idx,
+                       skip_rows=1)
 
 class QNLIv2Task(Task):
     '''Task class for SQuAD NLI'''
     def __init__(self, path, max_seq_len, name="qnliv2"):
         super(QNLIv2Task, self).__init__(name, 2)
-        self.load_data(path, max_seq_len)
+        self.files_by_split = {split: os.path.join(path, "%s.tsv" % split) for split in ALL_SPLITS}
+        self.max_seq_len = max_seq_len
 
-    def load_data(self, path, max_seq_len):
+    def load_data(self, path):
         '''Load the data'''
         targ_map = {'not_entailment': 0, 'entailment': 1}
-        tr_data = load_tsv(os.path.join(path, "train.tsv"), max_seq_len, targ_map=targ_map,
-                           s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
-        val_data = load_tsv(os.path.join(path, "dev.tsv"), max_seq_len, targ_map=targ_map,
-                            s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
-        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
-                           s1_idx=1, s2_idx=2, targ_idx=None, idx_idx=0, skip_rows=1)
-        self.train_data_text = tr_data
-        self.val_data_text = val_data
-        self.test_data_text = te_data
-        log.info("\tFinished loading QNLIv2.")
+        targ_idx = None if "test" in path else 3
+        idx_idx = 0 if "test" in path else None
+        return load_tsv(path, self.max_seq_len, targ_map=targ_map,
+                        s1_idx=1, s2_idx=2, targ_idx=targ_idx, idx_idx=idx_idx,
+                        skip_rows=1)
 
 class CoLATask(Task):
     '''Class for Warstdadt acceptability task'''
@@ -364,24 +384,28 @@ class CoLATask(Task):
         ''' '''
         super(CoLATask, self).__init__(name, 2)
         self.pair_input = 0
-        self.load_data(path, max_seq_len)
         self.val_metric = "%s_accuracy" % self.name
         self.val_metric_decreases = False
         self.scorer1 = Average()
         self.scorer2 = CategoricalAccuracy()
+        self.files_by_split = {split: os.path.join(path, "%s.tsv" % split) for split in ALL_SPLITS}
+        self.max_seq_len = max_seq_len
 
-    def load_data(self, path, max_seq_len):
+    def get_sentences(self):
+        for split in self.files_by_split:
+            if split.startswith("test"):
+                continue
+            for instance in self.load_data(self.files_by_split[split]):
+                yield instance[0]
+
+    def load_data(self, path):
         '''Load the data'''
-        tr_data = load_tsv(os.path.join(path, "train.tsv"), max_seq_len,
-                           s1_idx=3, s2_idx=None, targ_idx=1)
-        val_data = load_tsv(os.path.join(path, "dev.tsv"), max_seq_len,
-                            s1_idx=3, s2_idx=None, targ_idx=1)
-        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
-                           s1_idx=1, s2_idx=None, targ_idx=None, idx_idx=0, skip_rows=1)
-        self.train_data_text = tr_data
-        self.val_data_text = val_data
-        self.test_data_text = te_data
-        log.info("\tFinished loading CoLA.")
+        targ_idx = None if "test" in path else 1
+        idx_idx = 0 if "test" in path else None
+        s1_idx = 1 if "test" in path else 3
+        return load_tsv(path, self.max_seq_len,
+                        s1_idx=s1_idx, s2_idx=None, targ_idx=targ_idx, idx_idx=idx_idx,
+                        skip_rows=1)
 
     def get_metrics(self, reset=False):
         # NB: I think I call it accuracy b/c something weird in training
@@ -393,20 +417,16 @@ class WNLITask(Task):
     def __init__(self, path, max_seq_len, name="winograd"):
         ''' '''
         super(WNLITask, self).__init__(name, 2)
-        self.load_data(path, max_seq_len)
+        self.files_by_split = {split: os.path.join(path, "%s.tsv" % split) for split in ALL_SPLITS}
+        self.max_seq_len = max_seq_len
 
-    def load_data(self, path, max_seq_len):
+    def load_data(self, path):
         '''Load the data'''
-        tr_data = load_tsv(os.path.join(path, "train.tsv"), max_seq_len,
-                           s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
-        val_data = load_tsv(os.path.join(path, "dev.tsv"), max_seq_len,
-                            s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
-        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
-                           s1_idx=1, s2_idx=2, targ_idx=None, idx_idx=0, skip_rows=1)
-        self.train_data_text = tr_data
-        self.val_data_text = val_data
-        self.test_data_text = te_data
-        log.info("\tFinished loading Winograd.")
+        targ_idx = None if "test" in path else 3
+        idx_idx = 0 if "test" in path else None
+        return load_tsv(path, self.max_seq_len,
+                       s1_idx=1, s2_idx=2, targ_idx=targ_idx, idx_idx=idx_idx,
+                       skip_rows=1)
 
 #######################################
 # Non-benchmark tasks

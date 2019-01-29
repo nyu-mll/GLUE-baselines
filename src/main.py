@@ -7,11 +7,10 @@ import random
 import argparse
 import logging as log
 import _pickle as pkl
-import ipdb as pdb
 import torch
 
 from allennlp.data.iterators import BasicIterator, BucketIterator
-from util import device_mapping
+from utils import device_mapping
 
 from preprocess import build_tasks
 from models import build_model
@@ -30,17 +29,15 @@ def main(arguments):
     parser.add_argument('--log_file', help='file to log to', type=str, default='log.log')
     parser.add_argument('--exp_dir', help='directory containing shared preprocessing', type=str)
     parser.add_argument('--run_dir', help='directory for saving results, models, etc.', type=str)
-    parser.add_argument('--word_embs_file', help='file containing word embs', type=str, default='')
-    parser.add_argument('--preproc_file', help='file containing saved preprocessing stuff',
-                        type=str, default='preproc.pkl')
 
     # Time saving flags
     parser.add_argument('--should_train', help='1 if should train model', type=int, default=1)
     parser.add_argument('--load_model', help='1 if load from checkpoint', type=int, default=1)
     parser.add_argument('--load_epoch', help='Force loading from a certain epoch', type=int,
                         default=-1)
-    parser.add_argument('--load_tasks', help='1 if load tasks', type=int, default=1)
-    parser.add_argument('--load_preproc', help='1 if load vocabulary', type=int, default=1)
+    parser.add_argument('--reload_tasks', help='1 if load tasks', type=int, default=0)
+    parser.add_argument('--reload_vocab', help='1 if reload vocabulary', type=int, default=0)
+    parser.add_argument('--reload_indexing', help='1 if reload indexing', type=int, default=0)
 
     # Tasks and task-specific classifiers
     parser.add_argument('--train_tasks', help='comma separated list of tasks, or "all" or "none"',
@@ -55,8 +52,11 @@ def main(arguments):
     # Preprocessing options
     parser.add_argument('--max_seq_len', help='max sequence length', type=int, default=40)
     parser.add_argument('--max_word_v_size', help='max word vocab size', type=int, default=30000)
+    parser.add_argument('--max_char_v_size', help='max char vocab size', type=int, default=500)
 
     # Embedding options
+    parser.add_argument('--word_embs', help='file containing word embs', type=str, default='glove')
+    parser.add_argument('--word_embs_file', help='file containing word embs', type=str, default='')
     parser.add_argument('--dropout_embs', help='dropout rate for embeddings', type=float, default=.2)
     parser.add_argument('--d_word', help='dimension of word embeddings', type=int, default=300)
     parser.add_argument('--glove', help='1 if use glove, else from scratch', type=int, default=1)
