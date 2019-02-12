@@ -217,7 +217,7 @@ def main(arguments):
 
         # Test evaluation and prediction
         # could just filter out tasks to get what i want...
-        #tasks = [task for task in tasks if 'mnli' in task.name]
+        tasks = [task for task in tasks if task.name in ['sst']] # TODO(Alex): recomment
         te_results, te_preds = evaluate(model, tasks, iterator, cuda_device=args.cuda, split="test")
         val_results, _ = evaluate(model, tasks, iterator, cuda_device=args.cuda, split="val")
 

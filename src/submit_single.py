@@ -13,11 +13,13 @@ else:
     PATH_PREFIX = '/beegfs/aw3272'
     gpu_type = 'p40' # should be p100 or p40
 
-small_tasks = [('squad', 723), ('wnli', 5), ('msrp', 25), ('rte', 18), ('sts-b', 39)]
-big_tasks = [('mnli', 2612), ('quora', 2421)]
+#small_tasks = [('qnliv2', 723), ('wnli', 5), ('mrpc', 25), ('rte', 18), ('sts-b', 39)]
+small_tasks = [('wnli', 5), ('mrpc', 25), ('rte', 18), ('sts-b', 39)]
+big_tasks = [('mnli', 2612), ('qqp', 2421)]
 pair_tasks = small_tasks + big_tasks
-single_tasks = [('sst', 1053), ('acceptability', 134)]
-tasks = [('qnliv2', 723)] #single_tasks
+single_tasks = [('sst', 1053), ('cola', 134)]
+tasks = pair_tasks + single_tasks
+#tasks = [('qnliv2', 723)]
 
 # MAKE SURE TO CHANGE ME #
 proj_name = 'glue-baselines'
@@ -25,11 +27,11 @@ rand_search = 0
 n_runs = 1
 
 # embedding stuff
-elmo = 0
 deep_elmo = 0
-cove = 1
-glove = 1
-attn = 0
+elmo = 1
+cove = 0
+glove = 0
+attn = 1
 
 # model parameters
 d_hids = ['500', '1000', '1500', '2000']

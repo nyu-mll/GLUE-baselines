@@ -162,7 +162,7 @@ class QQPTask(Task):
         s1_idx = 1 if "test" in path else 3
         s2_idx = 2 if "test" in path else 4
         return load_tsv(path, self.max_seq_len,
-                        s1_idx=3, s2_idx=4, targ_idx=targ_idx, idx_idx=idx_idx,
+                        s1_idx=s1_idx, s2_idx=s2_idx, targ_idx=targ_idx, idx_idx=idx_idx,
                         skip_rows=1)
 
     def get_metrics(self, reset=False):
@@ -236,12 +236,16 @@ class MultiNLITask(Task):
         iters = []
         for path in paths:
             if split == "test":
-                idx_offset = sum(1 for _ in iters[-1]) if len(iters) else 0
                 if "diagnostic" in path:
                     s1_idx = self._indices["diagnostic"]["s1"]
                     s2_idx = self._indices["diagnostic"]["s2"]
                     targ_idx = self._indices["diagnostic"]["targ"]
                     idx_idx = self._indices["diagnostic"]["idx"]
+                    idx_offset = 9796 + 9847
+                elif "mismatched" in path:
+                    idx_offset = 9796
+                else:
+                    idx_offset = 0
             else:
                 idx_offset = 0
             i = load_tsv(path, self.max_seq_len, targ_map=targ_map,
@@ -326,8 +330,9 @@ class SSTTask(Task):
         '''Load the data'''
         targ_idx = None if "test" in path else 1
         idx_idx = 0 if "test" in path else None
+        sent_idx = 1 if "test" in path else 0
         return load_tsv(path, self.max_seq_len,
-                        s1_idx=0, s2_idx=None, targ_idx=targ_idx, idx_idx=idx_idx,
+                        s1_idx=sent_idx, s2_idx=None, targ_idx=targ_idx, idx_idx=idx_idx,
                         skip_rows=1)
 
 class RTETask(Task):
@@ -378,7 +383,7 @@ class QNLIv2Task(Task):
         idx_idx = 0 if "test" in path else None
         return load_tsv(path, self.max_seq_len, targ_map=targ_map,
                         s1_idx=1, s2_idx=2, targ_idx=targ_idx, idx_idx=idx_idx,
-                        skip_rows=1)
+                        skip_rows=0)
 
 class CoLATask(Task):
     '''Class for Warstdadt acceptability task'''

@@ -71,7 +71,10 @@ def evaluate(model, tasks, iterator, cuda_device, split="val"):
                 _, preds = out['logits'].max(dim=1)
             task_preds += preds.data.tolist()
 
-        task_metrics = task.get_metrics(reset=True)
+        try:
+            task_metrics = task.get_metrics(reset=True)
+        except:
+            pdb.set_trace()
         for name, value in task_metrics.items():
             all_metrics["%s_%s" % (task.name, name)] = value
         all_metrics["micro_accuracy"] += all_metrics["%s_accuracy" % task.name] * n_examples
