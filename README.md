@@ -2,7 +2,7 @@
 This repo contains the code for baselines for the [Generalized Language Understanding Evaluation](https://gluebenchmark.com/) (GLUE) benchmark.
 See [our paper](https://www.nyu.edu/projects/bowman/glue.pdf) for more details about GLUE or the baselines.
 
-# Alert!
+# Deprecation Warning
 
 Use this code to reproduce our baselines. If you want code to use as a starting point for new development, though, we strongly recommend using [jiant](https://github.com/jsalt18-sentence-repl/jiant) instead—it's a much more extensive and much better-documented toolkit built around the same goals.
 
