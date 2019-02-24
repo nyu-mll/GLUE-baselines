@@ -1,6 +1,6 @@
 # GLUE Baselines
 This repo contains the code for baselines for the [Generalized Language Understanding Evaluation](https://gluebenchmark.com/) (GLUE) benchmark.
-See [our paper](https://www.nyu.edu/projects/bowman/glue.pdf) for more details about GLUE or the baselines.
+See [our paper](https://openreview.net/pdf?id=rJ4km2R5t7) for more details about GLUE or the baselines.
 
 # Deprecation Warning
 
